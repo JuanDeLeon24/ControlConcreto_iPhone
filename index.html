@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#002F5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Concreto">
+<title>Control Concreto – PS-TUNEL 011</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="icon" href="icono-192.png">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div id="app"></div>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitulo">
+  <header><button class="ico" id="sheetCerrar" aria-label="Cerrar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="sheetTitulo"></h2><span id="sheetAccion"></span></header>
+  <div class="cuerpo" id="sheetCuerpo"></div>
+  <footer id="sheetPie"></footer>
+</section>
+
+<div class="pantalla" id="pantalla" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<input type="file" id="inCamara" accept="image/*" capture="environment" hidden>
+<input type="file" id="inGaleria" accept="image/*" hidden>
+<input type="file" id="inRespaldo" accept=".json,application/json" hidden>
+<input type="file" id="inLogo" accept="image/*" hidden>
+
+<script src="logica.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
