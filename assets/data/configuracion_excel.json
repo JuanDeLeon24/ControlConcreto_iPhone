@@ -1,0 +1,239 @@
+{
+  "archivo": "1. Reporte_Diario_Tuneles.xlsm",
+  "hojas": {
+    "Matriz cant.": {
+      "descripcion": "Actividades cobrables con cantidades programadas y ejecutadas",
+      "fila_encabezado": 1,
+      "fila_inicio_datos": 4,
+      "columnas": {
+        "TRAMO": 0,
+        "GRUPO": 1,
+        "NOMBRE_TAREA": 2,
+        "UNIDAD": 3,
+        "V_UNITARIO": 4,
+        "ACUMULADO": 7,
+        "SEMANAL": 8,
+        "MENSUAL": 10
+      },
+      "tunel_filtro": "TUNEL 0"
+    },
+    "Avances_Diarios": {
+      "descripcion": "Avance diario por actividad con porcentajes",
+      "fila_encabezado": 3,
+      "fila_inicio_datos": 4,
+      "columnas": {
+        "ACTIVIDAD": 0,
+        "COSTADO": 1,
+        "FECHA": 2,
+        "TURNO": 3,
+        "PK_INICIAL": 4,
+        "PK_FINAL": 5,
+        "LONGITUD": 6,
+        "CANTIDAD": 7,
+        "UNIDAD": 8,
+        "MODULOS": 9,
+        "AVANCE": 10,
+        "CODIGO": 12
+      }
+    },
+    "BD_Actividades": {
+      "descripcion": "Base de datos de actividades diarias",
+      "fila_encabezado": 5,
+      "fila_inicio_datos": 6,
+      "columnas": {
+        "FECHA": 0,
+        "TURNO": 1,
+        "ACTIVIDAD": 2,
+        "FRENTE": 3,
+        "GRUPO": 4,
+        "UNIDAD": 5,
+        "PK_INICIAL": 6,
+        "PK_FINAL": 7,
+        "DATO1": 9,
+        "DATO2": 11,
+        "HORA_INICIO_1": 12,
+        "HORA_FIN_1": 13,
+        "HORA_INICIO_2": 14
+      },
+      "total_filas": 4599
+    },
+    "Módulos_VB": {
+      "descripcion": "Módulos de viga base del Túnel 0",
+      "fila_encabezado": 4,
+      "fila_inicio_datos": 5,
+      "columnas": {
+        "MODULO": 0,
+        "PK_INICIAL": 1,
+        "PK_FINAL": 2,
+        "LONGITUD": 3,
+        "MACROFIBRA": 4,
+        "MICROFIBRA": 5,
+        "MALLA_ELECTROSOLDADA": 6
+      },
+      "total_modulos": 137
+    },
+    "Formato Túnel_Dia": {
+      "descripcion": "Reporte diario turno día",
+      "fila_encabezado": 9,
+      "fila_inicio_datos": 12,
+      "columnas": {
+        "ACTIVIDAD": 0,
+        "GRUPO": 1
+      }
+    },
+    "Formato Túnel_Noche": {
+      "descripcion": "Reporte diario turno noche",
+      "fila_encabezado": 9,
+      "fila_inicio_datos": 12,
+      "columnas": {
+        "ACTIVIDAD": 0,
+        "GRUPO": 1
+      }
+    }
+  },
+  "tunel_0": {
+    "nombre": "TÚNEL 0 - K6+178_K7+173",
+    "abscisa_inicial": 6178.0,
+    "abscisa_final": 7173.35,
+    "longitud_total": 995.0,
+    "modulos_viga_base": 137,
+    "longitud_modulo_tipico": 7.5
+  },
+  "actividades_cobrables": [
+    {
+      "grupo": "SOPORTE-REGULARIZADO",
+      "actividades": [
+        "Acero de refuerzo Fy=420 Mpa.",
+        "Excavación subterránea en material tipo III",
+        "Excavación subterránea en material tipo IV",
+        "Arco de Acero Estructural",
+        "Transporte de materiales",
+        "Pernos anclados con resina",
+        "Excavación subterránea en material tipo II",
+        "Fibra Sintética (Túneles)",
+        "Excavación subterránea en material tipo V",
+        "Pernos anclados con lechada",
+        "Concreto lanzado clase 28 MPa",
+        "Malla de acero electrosoldada Q5",
+        "Arco de acero tipo noruego",
+        "Ensayo de predicción Sísmica",
+        "Perforación exploratoria",
+        "Malla electrosoldada 150X150X7.5mm",
+        "Conexión para inyecciones",
+        "Inyección de consolidación",
+        "Tubería para enfilajes 4\"",
+        "Instalación de dianas"
+      ]
+    },
+    {
+      "grupo": "IMPERMEABILIZACION",
+      "actividades": [
+        "Geomembrana impermeabilizante E=2.00mm",
+        "Tubería PVC sanitaria 150mm",
+        "Geodren vial (0.5m - tub 6\")",
+        "Accesorios T 6\"",
+        "Accesorios Y 6\""
+      ]
+    },
+    {
+      "grupo": "SUBDRENAJES",
+      "actividades": [
+        "Excavación material tipo II",
+        "Excavación material tipo III",
+        "Excavación material tipo IV",
+        "Excavación material tipo V",
+        "Relleno Con Gravilla",
+        "Tubería PVC sanitaria 150mm",
+        "Tubería novafort 400mm",
+        "Geotextil NT-2500",
+        "Cámara de inspección Tipo A",
+        "Sumidero tipo CAZ"
+      ]
+    },
+    {
+      "grupo": "VIGA BASE",
+      "actividades": [
+        "Concreto clase 14 MPA",
+        "Concreto clase 28 MPA (Zapatas/Estribos/Aletas)",
+        "Acero de refuerzo Fy=420 Mpa."
+      ]
+    },
+    {
+      "grupo": "REVESTIMIENTO",
+      "actividades": [
+        "Malla electrosoldada 150X150X7.5mm",
+        "Concreto revestimiento clase 28 Mpa",
+        "Fibra Sintética (Túneles)",
+        "Microfibra sintética"
+      ]
+    },
+    {
+      "grupo": "GRANULARES",
+      "actividades": [
+        "Relleno para estructuras con recebo",
+        "Base granular clase A"
+      ]
+    },
+    {
+      "grupo": "MEZCLA",
+      "actividades": [
+        "Mezcla semi densa MSC-25",
+        "Riego de imprimación CRL-1"
+      ]
+    },
+    {
+      "grupo": "PAVIMENTO",
+      "actividades": [
+        "Pavimento de concreto Hidraulico",
+        "Acero de refuerzo Fy=420 Mpa."
+      ]
+    },
+    {
+      "grupo": "MOBILIARIO",
+      "actividades": [
+        "Sumidero tipo CAZ",
+        "Tapaprefabricada laterales",
+        "Concreto 28 Mpa para Bordillo",
+        "Anclaje estructural 1/2\"",
+        "Operación y mantenimiento"
+      ]
+    },
+    {
+      "grupo": "TANQUE",
+      "actividades": [
+        "Sistema Hidro Enterrado",
+        "Excavaciones varias",
+        "Concreto clase 28 MPA",
+        "Acero de refuerzo Fy=420 Mpa."
+      ]
+    },
+    {
+      "grupo": "SEÑALIZACION",
+      "actividades": [
+        "Pintura en frío acrílica",
+        "Tachas reflectivas",
+        "Señal vertical de tránsito",
+        "Captafaros"
+      ]
+    },
+    {
+      "grupo": "BROCALES",
+      "actividades": [
+        "Excavaciones varias",
+        "Concreto revestimiento clase 28 Mpa",
+        "Concreto clase 28 MPA (Zapatas/Estribos)",
+        "Concreto clase 14 MPA",
+        "Acero de refuerzo Fy=420 Mpa.",
+        "Geodren vial (0.5m - tub 6\")",
+        "Microfibra sintética"
+      ]
+    }
+  ],
+  "validacion": {
+    "verificar_hojas_existentes": true,
+    "manejar_errores": "continuar_con_advertencia",
+    "validar_formato_fechas": true,
+    "validar_pk_ordenadas": true,
+    "validar_avance_rango": true
+  }
+}

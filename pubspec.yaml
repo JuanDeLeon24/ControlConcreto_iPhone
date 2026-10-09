@@ -1,0 +1,68 @@
+name: control_concreto
+description: Aplicación móvil Android para control integral de avance constructivo del Túnel 0
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  
+  # Excel
+  excel: ^4.0.2
+  
+  # Gráficas
+  fl_chart: ^0.65.0
+  
+  # File picker
+  file_picker: ^6.1.1
+  
+  # Provider (gestión de estado)
+  provider: ^6.1.1
+  
+  # SharedPreferences (almacenamiento local)
+  shared_preferences: ^2.2.2
+  
+  # Intl (formato de fechas y números)
+  intl: ^0.18.1
+  
+  # HTTP (para futura API)
+  http: ^1.1.2
+  
+  # Firebase (para futura implementación)
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.14.0
+  
+  # Animaciones
+  lottie: ^3.1.0
+  
+  # Iconos
+  font_awesome_flutter: ^10.6.0
+  
+  # GoRouter (navegación)
+  go_router: ^13.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Assets (planos, imágenes, etc.)
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/data/
+  
+  # Fuentes personalizadas
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
