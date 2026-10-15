@@ -83,7 +83,7 @@ main{max-width:720px;margin:0 auto;padding:14px 16px calc(110px + var(--sb))}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--sup);box-shadow:0 -2px 10px rgba(0,47,92,.1);
   padding:10px 16px calc(10px + var(--sb));display:flex;gap:10px;justify-content:center}
 .dock>*{flex:1;max-width:340px}
-.fab{position:fixed;right:18px;bottom:calc(20px + var(--sb));z-index:20;background:var(--azul);color:#fff;border:0;border-radius:16px;
+.fab{position:fixed;left:18px;bottom:calc(20px + var(--sb));z-index:20;background:var(--azul);color:#fff;border:0;border-radius:16px;
   padding:0 20px;height:56px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(0,47,92,.35)}
 .fab svg{width:22px;height:22px}
 .btn{border:0;border-radius:10px;min-height:52px;padding:0 16px;font-weight:600;font-size:1rem;display:inline-flex;align-items:center;justify-content:center;gap:8px}
