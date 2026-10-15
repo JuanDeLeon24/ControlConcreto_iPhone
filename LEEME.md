@@ -1,26 +1,27 @@
-# Control Concreto para iPhone – PS-TUNEL 011
+# Control Concreto para iPhone – versión 1.4 (web app)
 
-Web app instalable: se abre desde un ícono en la pantalla de inicio y funciona sin señal.
-Los datos y las fotos se guardan dentro del iPhone.
+Misma app que la versión 1.4 de Android: catálogo, configuración del informe, campos adicionales
+(aditivos, fibras, dosis…), código del mixer y remisión, "Finalizar y resumen" con estadísticas,
+PDF, Excel, jornadas con fotos entre teléfonos (Android ↔ iPhone) y acceso de administrador.
+Funciona sin señal; los datos y las fotos se guardan dentro del iPhone.
 
-## Publicarla (una sola vez, gratis, con GitHub Pages)
-1. En github.com crea un repositorio NUEVO (ej. concreto-iphone) y márcalo Public.
-   GitHub Pages gratis requiere repositorio público; ahí solo queda el código de la app,
-   nunca tus datos, que viven en el teléfono.
-2. Add file > Upload files: sube TODOS estos archivos sueltos (sin carpeta):
+## Actualizar (si ya la tienes publicada en GitHub Pages)
+1. En tu repositorio público de la versión iPhone: Add file > Upload files.
+2. Sube TODOS estos archivos sueltos (sin carpeta), reemplazando los anteriores:
    index.html, estilos.css, logica.js, app.js, sw.js, manifest.webmanifest,
    icono-180.png, icono-192.png, icono-512.png > Commit changes.
+3. Espera 1-2 minutos. En el iPhone, con señal, abre la app desde su ícono, ciérrala por completo
+   (deslizar hacia arriba) y ábrela otra vez. Queda la versión nueva; tus jornadas y fotos se conservan.
+
+## Publicarla por primera vez
+1. Crea un repositorio NUEVO y Público (ej. concreto-iphone). Ahí solo va el código, nunca tus datos.
+2. Sube estos archivos sueltos como en el paso anterior.
 3. Settings > Pages > Branch: main, carpeta / (root) > Save.
-4. En 1-2 minutos aparece la dirección, tipo https://TU-USUARIO.github.io/concreto-iphone/
+4. La dirección debe empezar con https:// (ej. https://TU-USUARIO.github.io/concreto-iphone/).
+   No pongas dominio personalizado.
 
 ## Instalarla en el iPhone
-1. Abre esa dirección en Safari (no en Chrome ni dentro de WhatsApp), con señal.
-2. Compartir > Agregar a inicio > Agregar.
-3. Ábrela siempre desde ese ícono. Desde la primera vez queda guardada y funciona en modo avión.
+Abre la dirección en Safari > Compartir > Agregar a inicio. Ábrela siempre desde ese ícono.
 
-## Actualizar
-Sube los archivos nuevos al mismo repositorio. La próxima vez que abras la app con señal se
-actualiza sola; tus datos no se tocan.
-
-## Copias de seguridad
-Menú > Guardar copia de seguridad. Compatible con la app de Android. No incluye las fotos.
+## Primeros pasos
+Menú (⋮) > Configuración (pide usuario y contraseña de administrador) y Catálogo > Escribir catálogo.

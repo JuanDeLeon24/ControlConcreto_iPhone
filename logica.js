@@ -65,34 +65,6 @@ const T = {
 
 function promedio(a) { return a.length ? a.reduce((x, y) => x + y, 0) / a.length : null; }
 
-function resumen(j) {
-  const M = j.mixers;
-  const esp = M.map(m => T.diff(m.llegada, m.inicio)).filter(x => x != null);
-  const des = M.map(m => T.diff(m.inicio, m.fin)).filter(x => x != null);
-  const temps = M.map(m => T.num(m.temp)).filter(x => x != null);
-  const slump = M.map(m => T.pulgadas(m.asObra)).filter(x => x != null);
-  const primera = M.find(m => m.llegada), ultima = [...M].reverse().find(m => m.fin);
-  return {
-    n: M.length, vol: T.volumen(j), espera: promedio(esp), descargue: promedio(des),
-    tProm: promedio(temps), tMin: temps.length ? Math.min(...temps) : null, tMax: temps.length ? Math.max(...temps) : null,
-    sProm: promedio(slump), sMin: slump.length ? Math.min(...slump) : null, sMax: slump.length ? Math.max(...slump) : null,
-    primera: primera ? primera.llegada : '', ultimo: ultima ? ultima.fin : '',
-    duracion: primera && ultima ? T.diff(primera.llegada, ultima.fin) : null
-  };
-}
-
-function filasResumen(r) {
-  return [
-    ['Volumen total vaciado', `${T.fmt(r.vol, 2)} m³`],
-    ['Mixers recibidos', String(r.n)],
-    ['Primera llegada / último fin de descargue', `${r.primera || '–'} / ${r.ultimo || '–'}`],
-    ['Duración total del vaciado', T.dur(r.duracion)],
-    ['Espera promedio (llegada a inicio)', T.dur(r.espera)],
-    ['Descargue promedio por mixer', T.dur(r.descargue)],
-    ['Asentamiento en obra (prom. / rango)', `${r.sProm != null ? T.fraccion(r.sProm) + '"' : '–'}  (${T.rangoPulg(r.sMin, r.sMax)})`],
-    ['Temperatura (prom. / rango)', `${r.tProm != null ? T.fmt(r.tProm) + ' °C' : '–'}  (${T.rango(r.tMin, r.tMax, ' °C')})`]
-  ];
-}
 
 /* ================= Escáner: perspectiva + filtro ================= */
 const Escaner = {
@@ -230,63 +202,72 @@ const Excel = {
   numero(s, est) { if (!s || !String(s).trim()) return Excel.c(null, est); const n = T.num(s); return n == null ? Excel.c(s, X.CENTRO) : Excel.c(n, est); },
   hoja(nombre, anchos) { return { nombre, anchos, filas: [], comb: [], filtro: null, congelar: 0, fila(c, alto) { this.filas.push({ c, alto }); }, get sig() { return this.filas.length + 1; } }; },
 
-  jornada(j) {
-    const c = Excel.c, h = Excel.hoja('Jornada', [8, 17, 9, 11, 10, 9, 13, 13, 12, 26, 32]);
-    const rep = (n, f) => Array.from({ length: n }, (_, i) => f(i));
-    h.fila([c('CONTROL LLEGADAS DE CONCRETO A OBRA', X.TITULO), ...rep(8, () => c(null, X.TITULO)), c('PS-TUNEL 011', X.TITULO), c(null, X.TITULO)], 30);
-    h.comb.push('A1:I1', 'J1:K1');
-    h.fila([c('Construcciones El Cóndor S.A.', X.SUB)]); h.comb.push('A2:K2');
+  extra(m, c) { const v = (m.extras || {})[c.id] || ''; return c.tipo === 'NUMERO' ? Excel.numero(v, X.DEC2) : Excel.c(v || null, X.TEXTO); },
+
+  jornada(j, cfg = CONFIG_BASE) {
+    const c = Excel.c, campos = cfg.campos || [], n = 11 + campos.length, u = Excel.col(n - 1);
+    const h = Excel.hoja('Jornada', [8, 17, 9, 11, 10, 9, 13, 13, 12, 26, 32, ...campos.map(() => 16)]);
+    const rep = (k, f) => Array.from({ length: k }, (_, i) => f(i));
+    h.fila([c(cfg.titulo, X.TITULO), ...rep(n - 3, () => c(null, X.TITULO)), c(cfg.codigoFormato, X.TITULO), c(null, X.TITULO)], 30);
+    h.comb.push(`A1:${Excel.col(n - 3)}1`, `${Excel.col(n - 2)}1:${u}1`);
+    h.fila([c([cfg.empresa, cfg.proyecto].filter(Boolean).join('  ·  '), X.SUB)]); h.comb.push(`A2:${u}2`);
     const info = (a, b, cc, d, e, f) => {
       const r = h.sig;
       h.fila([c(a, X.ETIQ), c(b, X.TEXTO), c(null, X.TEXTO), c(null, X.TEXTO), c(cc, X.ETIQ), c(d, X.TEXTO), c(null, X.TEXTO), c(null, X.TEXTO), c(e, X.ETIQ), c(f, X.TEXTO), c(null, X.TEXTO)], 18);
       h.comb.push(`B${r}:D${r}`, `F${r}:H${r}`, `J${r}:K${r}`);
     };
-    info('Nombre:', j.nombre, 'Frente:', j.frente, 'Tramo:', j.tramo);
+    info('Nombre:', j.nombre, `${cfg.etFrente}:`, j.frente, `${cfg.etTramo}:`, j.tramo);
     info('Fecha:', `${T.fechaCorta(j.fecha)} (${T.fechaLarga(j.fecha)})`, 'Turno:', j.turno === 'Noche' ? 'Día [   ]    Noche [ X ]' : 'Día [ X ]    Noche [   ]', '', '');
     h.fila([]);
-    h.fila(['Orden\nllegada', 'Código mixer /\nremisión', 'Hora\nllegada', 'Hora inicio\ndescargue', 'Hora fin\ndescargue', 'Cant.\n(m³)', 'Asentamiento\nen planta (")', 'Asentamiento\nen obra (")', 'Temperatura\n(°C)', 'Localización', 'Observación'].map(t => c(t, X.ENC)), 32);
+    h.fila(['Orden\nllegada', 'Código mixer /\nremisión', 'Hora\nllegada', 'Hora inicio\ndescargue', 'Hora fin\ndescargue', 'Cant.\n(m³)', 'Asentamiento\nen planta (")', 'Asentamiento\nen obra (")', 'Temperatura\n(°C)', cfg.etLoc, 'Observación', ...campos.map(tituloCampo)].map(t => c(t, X.ENC)), 32);
     const pf = h.sig;
     j.mixers.forEach((m, i) => h.fila([c(i + 1, X.NUM), c(m.codigo, X.TEXTO), Excel.hora(m.llegada), Excel.hora(m.inicio), Excel.hora(m.fin),
-      Excel.numero(m.cant, X.DEC2), Excel.pulg(m.asPlanta), Excel.pulg(m.asObra), Excel.numero(m.temp, X.NUM), c(m.loc, X.TEXTO), c(m.obs, X.TEXTO)]));
-    for (let k = j.mixers.length; k < 10; k++) h.fila([c(k + 1, X.NUM), ...rep(10, i => c(null, i === 0 || i >= 8 ? X.TEXTO : X.CENTRO))]);
-    const uf = h.sig - 1, r = resumen(j), rt = h.sig;
+      Excel.numero(m.cant, X.DEC2), Excel.pulg(m.asPlanta), Excel.pulg(m.asObra), Excel.numero(m.temp, X.NUM), c(m.loc, X.TEXTO), c(m.obs || 'Sin observación', X.TEXTO),
+      ...campos.map(cp => Excel.extra(m, cp))]));
+    for (let k = j.mixers.length; k < 10; k++) h.fila([c(k + 1, X.NUM), ...rep(n - 1, i => c(null, i === 0 || i >= 8 ? X.TEXTO : X.CENTRO))]);
+    const uf = h.sig - 1, r = resumen(j, cfg), rt = h.sig;
     h.fila([...rep(5, i => c(i === 0 ? 'TOTAL VACIADO' : null, X.TOT_ETIQ)), c({ f: `SUM(F${pf}:F${uf})`, v: r.vol }, X.TOT_NUM),
-      ...rep(5, i => c(i === 0 ? `${r.n} ${r.n === 1 ? 'mixer' : 'mixers'}` : null, X.TOT_ENT))], 18);
-    h.comb.push(`A${rt}:E${rt}`, `G${rt}:K${rt}`);
+      ...rep(n - 6, i => c(i === 0 ? `${r.n} ${r.n === 1 ? 'mixer' : 'mixers'}` : null, X.TOT_ENT))], 18);
+    h.comb.push(`A${rt}:E${rt}`, `G${rt}:${u}${rt}`);
     h.fila([]);
     const rr = h.sig;
-    h.fila(rep(6, i => c(i === 0 ? 'Resumen de la jornada' : null, X.ENC)), 18); h.comb.push(`A${rr}:F${rr}`);
-    filasResumen(r).forEach(([k, v]) => { const f = h.sig; h.fila([c(k, X.ETIQ), c(null, X.ETIQ), c(null, X.ETIQ), c(null, X.ETIQ), c(v, X.TEXTO), c(null, X.TEXTO)]); h.comb.push(`A${f}:D${f}`, `E${f}:F${f}`); });
+    h.fila(rep(11, i => c(i === 0 ? 'Resumen, parámetros y estadísticas de la jornada' : null, X.ENC)), 18); h.comb.push(`A${rr}:K${rr}`);
+    filasResumen(r, cfg).forEach(([k, v]) => {
+      const f = h.sig;
+      h.fila([c(k, X.ETIQ), c(null, X.ETIQ), c(null, X.ETIQ), c(null, X.ETIQ), c(v, X.TEXTO), ...rep(6, () => c(null, X.TEXTO))], v.length > 95 ? 30 : null);
+      h.comb.push(`A${f}:D${f}`, `E${f}:K${f}`);
+    });
     h.fila([]); h.fila([]);
     h.fila([c(`Elaboró: ${j.nombre || ''}`, X.NORMAL), ...rep(6, () => c(null, X.NORMAL)), c('Revisó / Vo. Bo.', X.NORMAL)]);
-    const base = `Concreto_${j.fecha}_${j.turno}` + (j.tramo ? `_Tramo-${j.tramo}` : '');
+    const base = `Concreto_${j.fecha}_${j.turno}` + (j.tramo ? `_${cfg.etTramo}-${j.tramo}` : '');
     return { nombre: T.nombreArchivo(base, '.xlsx'), partes: Excel.libro([h]) };
   },
 
-  historial(jornadas) {
-    const c = Excel.c;
+  historial(jornadas, cfg = CONFIG_BASE) {
+    const c = Excel.c, campos = cfg.campos || [];
     const orden = [...jornadas].sort((a, b) => (a.fecha + a.turno + a.creada).localeCompare(b.fecha + b.turno + b.creada));
-    const reg = Excel.hoja('Registros', [11, 8, 16, 9, 7, 17, 9, 11, 10, 9, 12, 12, 11, 26, 32]);
+    const reg = Excel.hoja('Registros', [11, 8, 16, 9, 7, 17, 9, 11, 10, 9, 12, 12, 11, 26, 32, ...campos.map(() => 16)]);
     reg.congelar = 1;
-    reg.fila(['Fecha', 'Turno', 'Frente', 'Tramo', 'Orden', 'Código mixer / remisión', 'Hora llegada', 'Hora inicio descargue', 'Hora fin descargue', 'Cant. (m³)', 'Asent. planta (")', 'Asent. obra (")', 'Temp. (°C)', 'Localización', 'Observación'].map(t => c(t, X.ENC)), 32);
+    reg.fila(['Fecha', 'Turno', cfg.etFrente, cfg.etTramo, 'Orden', 'Código mixer / remisión', 'Hora llegada', 'Hora inicio descargue', 'Hora fin descargue', 'Cant. (m³)', 'Asent. planta (")', 'Asent. obra (")', 'Temp. (°C)', cfg.etLoc, 'Observación', ...campos.map(tituloCampo)].map(t => c(t, X.ENC)), 32);
     orden.forEach(j => j.mixers.forEach((m, i) => reg.fila([c(T.serialExcel(j.fecha), X.FECHA), c(j.turno, X.CENTRO), c(j.frente, X.TEXTO), c(j.tramo, X.CENTRO),
       c(i + 1, X.NUM), c(m.codigo, X.TEXTO), Excel.hora(m.llegada), Excel.hora(m.inicio), Excel.hora(m.fin), Excel.numero(m.cant, X.DEC2),
-      Excel.pulg(m.asPlanta), Excel.pulg(m.asObra), Excel.numero(m.temp, X.NUM), c(m.loc, X.TEXTO), c(m.obs, X.TEXTO)])));
-    reg.filtro = `A1:O${Math.max(2, reg.filas.length)}`;
-    const res = Excel.hoja('Por jornada', [11, 8, 16, 9, 9, 12, 11, 11, 13, 13, 13, 12]);
+      Excel.pulg(m.asPlanta), Excel.pulg(m.asObra), Excel.numero(m.temp, X.NUM), c(m.loc, X.TEXTO), c(m.obs || 'Sin observación', X.TEXTO), ...campos.map(cp => Excel.extra(m, cp))])));
+    reg.filtro = `A1:${Excel.col(14 + campos.length)}${Math.max(2, reg.filas.length)}`;
+    const res = Excel.hoja('Por jornada', [11, 8, 16, 9, 9, 12, 11, 11, 13, 12, 13, 13, 13, 12, 12]);
     res.congelar = 1;
-    res.fila(['Fecha', 'Turno', 'Frente', 'Tramo', 'Mixers', 'Volumen (m³)', 'Primera llegada', 'Último fin descargue', 'Duración vaciado (min)', 'Descargue prom. (min)', 'Asent. obra prom. (")', 'Temp. prom. (°C)'].map(t => c(t, X.ENC)), 32);
+    res.fila(['Fecha', 'Turno', cfg.etFrente, cfg.etTramo, 'Mixers', 'Volumen (m³)', 'Primera llegada', 'Último fin descargue', 'Duración vaciado (min)', 'Rendimiento (m³/h)', 'Espera prom. (min)', 'Descargue prom. (min)', 'Asent. obra prom. (")', 'Pérdida asent. prom. (")', 'Temp. prom. (°C)'].map(t => c(t, X.ENC)), 32);
     let tm = 0, tv = 0;
+    const red = (x, k) => x == null ? null : Math.round(x * k) / k;
     orden.forEach(j => {
-      const r = resumen(j); tm += r.n; tv += r.vol;
+      const r = resumen(j, cfg); tm += r.n; tv += r.vol;
       res.fila([c(T.serialExcel(j.fecha), X.FECHA), c(j.turno, X.CENTRO), c(j.frente, X.TEXTO), c(j.tramo, X.CENTRO), c(r.n, X.NUM), c(r.vol, X.DEC2),
-        Excel.hora(r.primera), Excel.hora(r.ultimo), c(r.duracion, X.NUM), c(r.descargue == null ? null : Math.round(r.descargue), X.NUM),
-        c(r.sProm == null ? null : Math.round(r.sProm * 8) / 8, X.FRAC), c(r.tProm == null ? null : Math.round(r.tProm * 10) / 10, X.NUM)]);
+        Excel.hora(r.primera), Excel.hora(r.ultimo), c(r.duracion, X.NUM), c(red(r.rendimiento, 100), X.DEC2), c(red(r.espera, 1), X.NUM),
+        c(red(r.descargue, 1), X.NUM), c(red(r.sProm, 8), X.FRAC), c(red(r.perdida, 8), X.FRAC), c(red(r.tProm, 10), X.NUM)]);
     });
     const ult = res.filas.length;
     res.fila([c('TOTAL', X.TOT_ETIQ), c(null, X.TOT_ETIQ), c(null, X.TOT_ETIQ), c(null, X.TOT_ETIQ), c({ f: `SUM(E2:E${ult})`, v: tm }, X.TOT_NUM), c({ f: `SUM(F2:F${ult})`, v: tv }, X.TOT_NUM)]);
     res.comb.push(`A${res.filas.length}:D${res.filas.length}`);
-    res.filtro = `A1:L${Math.max(2, ult)}`;
+    res.filtro = `A1:O${Math.max(2, ult)}`;
     return { nombre: T.nombreArchivo(`Historial_concreto_${T.hoy()}`, '.xlsx'), partes: Excel.libro([reg, res]) };
   },
 
@@ -379,3 +360,400 @@ function pdfDeJpegs(paginas, anchoPt, altoPt) {
 }
 
 if (typeof module !== 'undefined') module.exports = { T, resumen, filasResumen, Escaner, Excel, zipStore, pdfDeJpegs };
+/* ================= Descompresión ZIP (inflate, sin librerías) ================= */
+const Inflate = (() => {
+  function construir(longs, n) {
+    const cuenta = new Uint16Array(16), offs = new Uint16Array(16), sim = new Uint16Array(n);
+    for (let i = 0; i < n; i++) cuenta[longs[i]]++;
+    cuenta[0] = 0;
+    for (let i = 1; i < 16; i++) offs[i] = offs[i - 1] + cuenta[i - 1];
+    for (let i = 0; i < n; i++) if (longs[i]) sim[offs[longs[i]]++] = i;
+    return { cuenta, sim };
+  }
+  const BASE_L = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
+  const EXTRA_L = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
+  const BASE_D = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];
+  const EXTRA_D = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
+  const ORDEN = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+  let FIJA_L = null, FIJA_D = null;
+  function fijas() {
+    if (FIJA_L) return;
+    const l = new Uint8Array(288);
+    for (let i = 0; i < 144; i++) l[i] = 8; for (let i = 144; i < 256; i++) l[i] = 9;
+    for (let i = 256; i < 280; i++) l[i] = 7; for (let i = 280; i < 288; i++) l[i] = 8;
+    FIJA_L = construir(l, 288);
+    FIJA_D = construir(new Uint8Array(30).fill(5), 30);
+  }
+  return function inflar(datos, tamano) {
+    let pos = 0, bitbuf = 0, bitcnt = 0;
+    let out = new Uint8Array(tamano > 0 ? tamano : Math.max(1024, datos.length * 4)), op = 0;
+    const asegurar = n => {
+      if (op + n <= out.length) return;
+      let t = out.length * 2; while (t < op + n) t *= 2;
+      const nu = new Uint8Array(t); nu.set(out); out = nu;
+    };
+    const bits = n => {
+      while (bitcnt < n) { if (pos >= datos.length) throw new Error('ZIP dañado'); bitbuf |= datos[pos++] << bitcnt; bitcnt += 8; }
+      const v = bitbuf & ((1 << n) - 1); bitbuf >>>= n; bitcnt -= n; return v;
+    };
+    const decodificar = h => {
+      let code = 0, first = 0, index = 0;
+      for (let len = 1; len < 16; len++) {
+        code |= bits(1);
+        const c = h.cuenta[len];
+        if (code - c < first) return h.sim[index + (code - first)];
+        index += c; first += c; first <<= 1; code <<= 1;
+      }
+      throw new Error('ZIP dañado');
+    };
+    let final = 0;
+    do {
+      final = bits(1);
+      const tipo = bits(2);
+      if (tipo === 0) {
+        bitbuf = 0; bitcnt = 0;
+        const len = datos[pos] | (datos[pos + 1] << 8); pos += 4;
+        asegurar(len); out.set(datos.subarray(pos, pos + len), op); op += len; pos += len;
+      } else if (tipo === 1 || tipo === 2) {
+        let hl, hd;
+        if (tipo === 1) { fijas(); hl = FIJA_L; hd = FIJA_D; }
+        else {
+          const nl = bits(5) + 257, nd = bits(5) + 1, nc = bits(4) + 4;
+          const lc = new Uint8Array(19);
+          for (let i = 0; i < nc; i++) lc[ORDEN[i]] = bits(3);
+          const hc = construir(lc, 19), longs = new Uint8Array(nl + nd);
+          for (let i = 0; i < nl + nd;) {
+            const s = decodificar(hc);
+            if (s < 16) longs[i++] = s;
+            else {
+              let rep = 0, val = 0;
+              if (s === 16) { if (!i) throw new Error('ZIP dañado'); val = longs[i - 1]; rep = 3 + bits(2); }
+              else if (s === 17) rep = 3 + bits(3); else rep = 11 + bits(7);
+              while (rep--) longs[i++] = val;
+            }
+          }
+          hl = construir(longs.subarray(0, nl), nl); hd = construir(longs.subarray(nl), nd);
+        }
+        for (;;) {
+          const s = decodificar(hl);
+          if (s < 256) { asegurar(1); out[op++] = s; }
+          else if (s === 256) break;
+          else {
+            const k = s - 257, len = BASE_L[k] + bits(EXTRA_L[k]);
+            const dsim = decodificar(hd), dist = BASE_D[dsim] + bits(EXTRA_D[dsim]);
+            asegurar(len);
+            for (let i = 0; i < len; i++, op++) out[op] = out[op - dist];
+          }
+        }
+      } else throw new Error('ZIP dañado');
+    } while (!final);
+    return out.subarray(0, op);
+  };
+})();
+
+/** Lee un .zip (o .xlsx) y devuelve un Map nombre → bytes. */
+function leerZip(buf) {
+  const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf), dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let e = -1;
+  for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('No es un ZIP');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
+  const dec = new TextDecoder(), out = new Map();
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const metodo = dv.getUint16(p + 10, true), comp = dv.getUint32(p + 20, true), tam = dv.getUint32(p + 24, true);
+    const ln = dv.getUint16(p + 28, true), lx = dv.getUint16(p + 30, true), lc = dv.getUint16(p + 32, true), loc = dv.getUint32(p + 42, true);
+    const nombre = dec.decode(b.subarray(p + 46, p + 46 + ln));
+    p += 46 + ln + lx + lc;
+    const ini = loc + 30 + dv.getUint16(loc + 26, true) + dv.getUint16(loc + 28, true);
+    const datos = b.subarray(ini, ini + comp);
+    if (nombre.endsWith('/')) continue;
+    if (metodo === 0) out.set(nombre, datos.slice());
+    else if (metodo === 8) out.set(nombre, Inflate(datos, tam));
+  }
+  return out;
+}
+
+/* ================= SHA-256 (para el acceso de administrador) ================= */
+function sha256Hex(texto) {
+  const K = new Uint32Array([0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]);
+  const msg = new TextEncoder().encode(texto), l = msg.length, nb = ((l + 9 + 63) >> 6) << 6;
+  const m = new Uint8Array(nb); m.set(msg); m[l] = 0x80;
+  const dv = new DataView(m.buffer); dv.setUint32(nb - 4, (l * 8) >>> 0); dv.setUint32(nb - 8, Math.floor(l / 0x20000000));
+  const H = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+  const W = new Uint32Array(64), r = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < nb; o += 64) {
+    for (let i = 0; i < 16; i++) W[i] = dv.getUint32(o + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = r(W[i - 15], 7) ^ r(W[i - 15], 18) ^ (W[i - 15] >>> 3), s1 = r(W[i - 2], 17) ^ r(W[i - 2], 19) ^ (W[i - 2] >>> 10);
+      W[i] = (W[i - 16] + s0 + W[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + W[i]) >>> 0;
+      const t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0] += a; H[1] += b; H[2] += c; H[3] += d; H[4] += e; H[5] += f; H[6] += g; H[7] += h;
+  }
+  return Array.from(H, x => x.toString(16).padStart(8, '0')).join('');
+}
+
+/* ================= Configuración de la app y del informe ================= */
+const TIPOS_CAMPO = { NUMERO: 'Número', TEXTO: 'Texto', LISTA: 'Lista de opciones' };
+const CONFIG_BASE = {
+  empresa: 'Construcciones El Cóndor S.A.', proyecto: '', titulo: 'CONTROL LLEGADAS DE CONCRETO A OBRA',
+  codigoFormato: 'PS-TUNEL 011', area: 'Revestimiento del túnel',
+  etFrente: 'Frente', etTramo: 'Tramo', etLoc: 'Localización',
+  asentMin: '', asentMax: '', tempMin: '', tempMax: '', esperaMax: 30, campos: []
+};
+/* Mismos identificadores que en Android, para que las jornadas pasen entre teléfonos con sus datos adicionales. */
+const CAMPOS_SUGERIDOS = [
+  { id: 'sug_fc', nombre: "Resistencia de diseño f'c", tipo: 'NUMERO', unidad: 'MPa', opciones: [], estadistica: true },
+  { id: 'sug_tipo', nombre: 'Tipo de concreto', tipo: 'LISTA', unidad: '', opciones: ['Convencional', 'Lanzado', 'Autocompactante', 'Fluido', 'Masivo'], estadistica: true },
+  { id: 'sug_aditivo', nombre: 'Aditivo', tipo: 'TEXTO', unidad: '', opciones: [], estadistica: true },
+  { id: 'sug_dosis_ad', nombre: 'Dosis de aditivo', tipo: 'NUMERO', unidad: 'L/m³', opciones: [], estadistica: true },
+  { id: 'sug_fibra', nombre: 'Fibra', tipo: 'LISTA', unidad: '', opciones: ['Metálica', 'Sintética', 'Sin fibra'], estadistica: true },
+  { id: 'sug_dosis_fib', nombre: 'Dosis de fibra', tipo: 'NUMERO', unidad: 'kg/m³', opciones: [], estadistica: true },
+  { id: 'sug_agua', nombre: 'Agua adicionada en obra', tipo: 'NUMERO', unidad: 'L', opciones: [], estadistica: true },
+  { id: 'sug_cilindros', nombre: 'Cilindros tomados', tipo: 'NUMERO', unidad: 'und', opciones: [], estadistica: true },
+  { id: 'sug_bomba', nombre: 'Equipo de colocación', tipo: 'LISTA', unidad: '', opciones: ['Bomba estacionaria', 'Autobomba', 'Canal', 'Balde / grúa'], estadistica: true }
+];
+function tituloCampo(c) { return c.unidad ? `${c.nombre} (${c.unidad})` : c.nombre; }
+function cfgDesde(o) {
+  const d = CONFIG_BASE, s = (k, def) => (o && o[k] != null ? String(o[k]) : def);
+  const campos = (o && Array.isArray(o.campos) ? o.campos : []).map(f => ({
+    id: String(f.id || T.uid()), nombre: String(f.nombre || '').trim(),
+    tipo: TIPOS_CAMPO[f.tipo] ? f.tipo : 'TEXTO', unidad: String(f.unidad || ''),
+    opciones: (Array.isArray(f.opciones) ? f.opciones : []).map(String).filter(x => x.trim()),
+    estadistica: f.estadistica !== false
+  })).filter(f => f.nombre);
+  const esp = parseInt(o && o.esperaMax, 10);
+  return {
+    empresa: s('empresa', d.empresa), proyecto: s('proyecto', ''), titulo: s('titulo', d.titulo) || d.titulo,
+    codigoFormato: s('codigoFormato', d.codigoFormato), area: s('area', d.area),
+    etFrente: s('etFrente', d.etFrente) || d.etFrente, etTramo: s('etTramo', d.etTramo) || d.etTramo, etLoc: s('etLoc', d.etLoc) || d.etLoc,
+    asentMin: s('asentMin', ''), asentMax: s('asentMax', ''), tempMin: s('tempMin', ''), tempMax: s('tempMax', ''),
+    esperaMax: isFinite(esp) && esp >= 1 ? Math.min(600, esp) : 30, campos
+  };
+}
+
+/* ================= Código del mixer y remisión: "mx123" + "456" -> "MX-123 / 456" ================= */
+const Codigos = {
+  SEP: ' / ',
+  mixer(s) {
+    const t = String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!t) return '';
+    const m = t.match(/^(\p{L}+)[^\p{L}\d]*(\d+)$/u);
+    return m ? `${m[1]}-${m[2]}` : t;
+  },
+  soloNumeros(s) { return String(s || '').replace(/\D/g, ''); },
+  juntar(mixer, remision) {
+    const a = Codigos.mixer(mixer), b = Codigos.soloNumeros(remision);
+    return !b ? a : !a ? `–${Codigos.SEP}${b}` : `${a}${Codigos.SEP}${b}`;
+  },
+  separar(s) {
+    s = String(s || ''); const i = s.lastIndexOf(Codigos.SEP);
+    if (i >= 0) {
+      const rem = s.slice(i + Codigos.SEP.length).trim();
+      if (rem && /^\d+$/.test(rem)) { const cod = s.slice(0, i).trim(); return [cod === '–' ? '' : cod, rem]; }
+    }
+    return [s.trim(), ''];
+  }
+};
+const OTRO = 'Otro...';
+
+/* ================= Resumen, parámetros y estadísticas ================= */
+function resumen(j, cfg = CONFIG_BASE) {
+  const M = j.mixers, nn = a => a.filter(x => x != null);
+  const mn = a => a.length ? Math.min(...a) : null, mx = a => a.length ? Math.max(...a) : null;
+  const cants = nn(M.map(m => T.num(m.cant)));
+  const esp = nn(M.map(m => T.diff(m.llegada, m.inicio)));
+  const des = nn(M.map(m => T.diff(m.inicio, m.fin)));
+  const ciclos = nn(M.map(m => T.diff(m.llegada, m.fin)));
+  const lleg = M.map(m => m.llegada).filter(Boolean);
+  const inter = []; for (let i = 1; i < lleg.length; i++) { const d = T.diff(lleg[i - 1], lleg[i]); if (d != null) inter.push(d); }
+  const temps = nn(M.map(m => T.num(m.temp)));
+  const slump = nn(M.map(m => T.pulgadas(m.asObra)));
+  const planta = nn(M.map(m => T.pulgadas(m.asPlanta)));
+  const perd = nn(M.map(m => { const p = T.pulgadas(m.asPlanta), o = T.pulgadas(m.asObra); return p != null && o != null ? p - o : null; }));
+  const caud = nn(M.map(m => { const c = T.num(m.cant), d = T.diff(m.inicio, m.fin); return c != null && d != null && d > 0 ? [c, d] : null; }));
+  const primera = M.find(m => m.llegada), ultima = [...M].reverse().find(m => m.fin);
+  const duracion = primera && ultima ? T.diff(primera.llegada, ultima.fin) : null;
+  const vol = T.volumen(j);
+  const aMin = T.pulgadas(cfg.asentMin), aMax = T.pulgadas(cfg.asentMax), tMn = T.num(cfg.tempMin), tMx = T.num(cfg.tempMax);
+  const porLoc = {};
+  M.forEach(m => { const k = (m.loc || '').trim() || `Sin ${cfg.etLoc.toLowerCase()}`; porLoc[k] = (porLoc[k] || 0) + (T.num(m.cant) || 0); });
+  const extras = [];
+  (cfg.campos || []).filter(c => c.estadistica).forEach(c => {
+    const vals = M.map(m => ((m.extras || {})[c.id] || '').trim()).filter(Boolean);
+    if (!vals.length) return;
+    const u = c.unidad ? ' ' + c.unidad : '';
+    if (c.tipo === 'NUMERO') {
+      const ns = nn(vals.map(T.num)); if (!ns.length) return;
+      extras.push([c.nombre, `${T.fmt(promedio(ns), 2)}${u} prom.  (${T.rango(mn(ns), mx(ns), u)})  ·  ${ns.length} de ${M.length} mixers`]);
+    } else {
+      const cnt = {}; vals.forEach(v => { cnt[v] = (cnt[v] || 0) + 1; });
+      extras.push([c.nombre, Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`).join('  ·  ')]);
+    }
+  });
+  return {
+    n: M.length, vol, volProm: promedio(cants), volMin: mn(cants), volMax: mx(cants),
+    espera: promedio(esp), esperaMax: mx(esp), esperasLargas: esp.filter(x => x > cfg.esperaMax).length,
+    descargue: promedio(des), descargueMax: mx(des), ciclo: promedio(ciclos), intervalo: promedio(inter),
+    rendimiento: duracion > 0 && vol > 0 ? vol / (duracion / 60) : null,
+    caudal: caud.length ? caud.reduce((s, x) => s + x[0], 0) / (caud.reduce((s, x) => s + x[1], 0) / 60) : null,
+    tProm: promedio(temps), tMin: mn(temps), tMax: mx(temps),
+    sProm: promedio(slump), sMin: mn(slump), sMax: mx(slump),
+    pProm: promedio(planta), pMin: mn(planta), pMax: mx(planta), perdida: promedio(perd),
+    fueraAsent: aMin == null && aMax == null ? null : slump.filter(x => (aMin != null && x < aMin - 1e-9) || (aMax != null && x > aMax + 1e-9)).length,
+    fueraTemp: tMn == null && tMx == null ? null : temps.filter(x => (tMn != null && x < tMn) || (tMx != null && x > tMx)).length,
+    sinFin: M.filter(m => !m.fin).length,
+    primera: primera ? primera.llegada : '', ultimo: ultima ? ultima.fin : '', duracion,
+    porLoc: Object.entries(porLoc).sort((a, b) => b[1] - a[1]), extras
+  };
+}
+
+function filasResumen(r, cfg = CONFIG_BASE) {
+  const pulg = d => d == null ? '–' : T.fraccion(d) + '"';
+  const f = [];
+  f.push(['Volumen total vaciado', `${T.fmt(r.vol, 2)} m³`]);
+  f.push(['Mixers recibidos', String(r.n) + (r.sinFin ? `  (${r.sinFin} sin hora de fin)` : '')]);
+  f.push(['Volumen por mixer (prom. / rango)', r.volProm != null ? `${T.fmt(r.volProm, 2)} m³  (${T.rango(r.volMin, r.volMax, ' m³')})` : '–']);
+  f.push(['Primera llegada / último fin de descargue', `${r.primera || '–'} / ${r.ultimo || '–'}`]);
+  f.push(['Duración total del vaciado', T.dur(r.duracion)]);
+  f.push(['Rendimiento del vaciado', r.rendimiento != null ? `${T.fmt(r.rendimiento, 2)} m³/h` : '–']);
+  f.push(['Intervalo promedio entre llegadas', T.dur(r.intervalo)]);
+  f.push(['Espera en obra (prom. / máxima)', `${T.dur(r.espera)} / ${T.dur(r.esperaMax)}`]);
+  f.push([`Mixers con espera mayor a ${cfg.esperaMax} min`, String(r.esperasLargas)]);
+  f.push(['Descargue por mixer (prom. / máximo)', `${T.dur(r.descargue)} / ${T.dur(r.descargueMax)}`]);
+  f.push(['Caudal promedio de descargue', r.caudal != null ? `${T.fmt(r.caudal, 2)} m³/h` : '–']);
+  f.push(['Permanencia en obra (llegada a fin)', T.dur(r.ciclo)]);
+  if (r.pProm != null) f.push(['Asentamiento en planta (prom. / rango)', `${pulg(r.pProm)}  (${T.rangoPulg(r.pMin, r.pMax)})`]);
+  f.push(['Asentamiento en obra (prom. / rango)', `${pulg(r.sProm)}  (${T.rangoPulg(r.sMin, r.sMax)})`]);
+  if (r.perdida != null) f.push(['Pérdida de asentamiento promedio (planta − obra)', r.perdida < 0 ? `−${T.fraccion(-r.perdida)}" (ganó asentamiento)` : pulg(r.perdida)]);
+  if (r.fueraAsent != null) f.push([`Mixers fuera del asentamiento especificado (${[cfg.asentMin, cfg.asentMax].filter(Boolean).join(' a ')}")`, String(r.fueraAsent)]);
+  f.push(['Temperatura (prom. / rango)', `${r.tProm != null ? T.fmt(r.tProm) + ' °C' : '–'}  (${T.rango(r.tMin, r.tMax, ' °C')})`]);
+  if (r.fueraTemp != null) f.push([`Mixers fuera de la temperatura especificada (${[cfg.tempMin && 'mín. ' + cfg.tempMin, cfg.tempMax && 'máx. ' + cfg.tempMax].filter(Boolean).join(', ')} °C)`, String(r.fueraTemp)]);
+  if (r.porLoc.length) f.push([`Volumen por ${cfg.etLoc.toLowerCase()}`, r.porLoc.map(([k, v]) => `${k}: ${T.fmt(v, 2)} m³`).join('  ·  ')]);
+  r.extras.forEach(x => f.push(x));
+  return f;
+}
+
+/* ================= Catálogo (frentes, tramos y localizaciones) ================= */
+const Catalogo = {
+  norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); },
+  frentes(c) { return [...new Set(c.items.map(i => i.frente).filter(Boolean))]; },
+  tramos(c, f) { return [...new Set(c.items.filter(i => i.frente === f).map(i => i.tramo).filter(Boolean))]; },
+
+  leer(buf) {
+    const b = new Uint8Array(buf);
+    if (b.length < 4) throw new Error('El archivo está vacío');
+    const ini = Array.from(b.subarray(0, 256), x => String.fromCharCode(x)).join('');
+    if (ini.includes('MSMAMARPCRYPT') || ini.includes('AES/CBC'))
+      throw new Error('El archivo está cifrado por la protección de Microsoft (Intune) del teléfono de la empresa, por eso no se puede leer. ' +
+        'Usa "Escribir catálogo" o pasa el archivo sin abrirlo en Outlook, Teams u OneDrive del trabajo.');
+    if (b[0] === 0x50 && b[1] === 0x4B) return Catalogo.aItems(Catalogo.xlsx(b));
+    if (b[0] === 0xD0 && b[1] === 0xCF) throw new Error('Es un Excel antiguo (.xls). Guárdalo como .xlsx o como CSV e inténtalo de nuevo');
+    const m = b.subarray(0, 2048); let raros = 0;
+    for (const c of m) if (c < 9 || (c >= 14 && c < 32)) raros++;
+    if (raros > m.length / 50) throw new Error('El archivo no es un Excel (.xlsx) ni un CSV válido, o está dañado o cifrado');
+    return Catalogo.aItems(Catalogo.csv(b));
+  },
+
+  csv(b) {
+    let t = new TextDecoder('utf-8').decode(b);
+    if (t.includes('\uFFFD')) { try { t = new TextDecoder('windows-1252').decode(b); } catch (e) { } }
+    t = t.replace(/^\uFEFF/, '');
+    const primera = t.split(/\r?\n/).find(l => l.trim()) || '';
+    const sep = [';', ',', '\t'].sort((a, c) => primera.split(c).length - primera.split(a).length)[0];
+    const filas = []; let fila = [], campo = '', q = false;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      if (q) { if (ch === '"') { if (t[i + 1] === '"') { campo += '"'; i++; } else q = false; } else campo += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === sep) { fila.push(campo); campo = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; fila.push(campo); filas.push(fila); fila = []; campo = ''; }
+      else campo += ch;
+    }
+    if (campo || fila.length) { fila.push(campo); filas.push(fila); }
+    return filas;
+  },
+
+  xml(s) { return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16))).replace(/&amp;/g, '&'); },
+  textos(s) { let r = ''; s.replace(/<t\b[^>]*>([\s\S]*?)<\/t>/g, (_, x) => { r += x; return ''; }); return Catalogo.xml(r); },
+
+  xlsx(b) {
+    const z = leerZip(b), dec = new TextDecoder(), leer = n => z.has(n) ? dec.decode(z.get(n)) : null;
+    const comp = [];
+    const ss = leer('xl/sharedStrings.xml');
+    if (ss) ss.replace(/<si\b[^>]*>([\s\S]*?)<\/si>/g, (_, x) => { comp.push(Catalogo.textos(x)); return ''; });
+    let hoja = 'xl/worksheets/sheet1.xml';
+    const wb = leer('xl/workbook.xml'), rels = leer('xl/_rels/workbook.xml.rels');
+    const mId = wb && wb.match(/<sheet\b[^>]*r:id="([^"]+)"/);
+    if (mId && rels) {
+      const re = new RegExp(`<Relationship\\b[^>]*Id="${mId[1]}"[^>]*>`), rel = rels.match(re);
+      const tg = rel && rel[0].match(/Target="([^"]+)"/);
+      if (tg) hoja = tg[1].startsWith('/') ? tg[1].slice(1) : 'xl/' + tg[1].replace(/^\.\//, '');
+    }
+    const xml = leer(hoja);
+    if (!xml) throw new Error('No encontré la hoja del Excel');
+    const filas = new Map();
+    xml.replace(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (_, at, cont) => {
+      const ref = (at.match(/\br="([A-Z]+)(\d+)"/) || []); if (!ref[1]) return '';
+      let col = 0; for (const ch of ref[1]) col = col * 26 + (ch.charCodeAt(0) - 64); col--;
+      const tipo = (at.match(/\bt="([^"]+)"/) || [])[1] || '';
+      let v = '';
+      if (cont) {
+        if (tipo === 'inlineStr') v = Catalogo.textos(cont);
+        else { const mv = cont.match(/<v>([\s\S]*?)<\/v>/); v = mv ? Catalogo.xml(mv[1]) : ''; }
+      }
+      if (tipo === 's') v = comp[+v] || '';
+      else if (!tipo || tipo === 'n') { const n = Number(v); if (v !== '' && isFinite(n) && Number.isInteger(n)) v = String(n); }
+      const r = +ref[2]; if (!filas.has(r)) filas.set(r, []);
+      filas.get(r)[col] = v;
+      return '';
+    });
+    return [...filas.keys()].sort((a, c) => a - c).map(k => Array.from(filas.get(k), x => x == null ? '' : x));
+  },
+
+  aItems(filasCrudas) {
+    const filas = filasCrudas.map(f => f.map(x => String(x == null ? '' : x).trim())).filter(f => f.some(Boolean));
+    if (!filas.length) throw new Error('El archivo está vacío');
+    const iEnc = filas.slice(0, 10).findIndex(f => f.some(x => ['frente', 'frentes'].includes(Catalogo.norm(x))));
+    let cF = 0, cT = 1, cE = 2, inicio = 0;
+    if (iEnc >= 0) {
+      const enc = filas[iEnc].map(Catalogo.norm), buscar = (...k) => enc.findIndex(h => k.some(x => h.startsWith(x)));
+      cF = buscar('frente'); cT = buscar('tramo'); cE = buscar('localizacion', 'elemento', 'actividad', 'tipo de vaciado', 'lugar');
+      inicio = iEnc + 1;
+    }
+    const items = [], elementos = []; let omitidas = 0, anterior = '';
+    for (const f of filas.slice(inicio)) {
+      const v = i => i >= 0 ? (f[i] || '') : '';
+      const el = v(cE);
+      if (el && el.toLowerCase() !== OTRO.toLowerCase()) elementos.push(el);
+      if (!v(cF) && !v(cT)) { if (!el) omitidas++; continue; }
+      const frente = v(cF) || anterior;
+      if (!frente) { omitidas++; continue; }
+      anterior = frente;
+      items.push({ frente, tramo: v(cT) });
+    }
+    const unicos = [], vistos = new Set();
+    items.forEach(i => { const k = i.frente + '\u0001' + i.tramo; if (!vistos.has(k)) { vistos.add(k); unicos.push(i); } });
+    const elems = [...new Set(elementos)];
+    if (!unicos.length && !elems.length) throw new Error('No encontré filas válidas. Revisa que la columna Frente tenga datos');
+    return { items: unicos, elementos: elems, omitidas };
+  },
+
+  desdeTexto(frentes, locs) {
+    const items = []; let anterior = '';
+    String(frentes || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(l => {
+      const p = l.split(/[;\t|]/), f = (p[0] || '').trim() || anterior, t = p.slice(1).join(' ').trim();
+      if (f) { items.push({ frente: f, tramo: t }); anterior = f; }
+    });
+    const el = [...new Set(String(locs || '').split(/\r?\n/).map(l => l.trim()).filter(l => l && l.toLowerCase() !== OTRO.toLowerCase()))];
+    if (!items.length && !el.length) throw new Error('Escribe al menos un frente o una localización');
+    return Catalogo.aItems([['Frente', 'Tramo', 'Localización'], ...items.map(i => [i.frente, i.tramo, '']), ...el.map(e => ['', '', e])]);
+  },
+  textoFrentes(c) { return [...new Set(c.items.map(i => i.tramo ? `${i.frente} ; ${i.tramo}` : i.frente))].join('\n'); }
+};
