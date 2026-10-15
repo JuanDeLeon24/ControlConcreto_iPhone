@@ -2,7 +2,7 @@
 
 Misma app que la versión 1.4 de Android: catálogo, configuración del informe, campos adicionales
 (aditivos, fibras, dosis…), código del mixer y remisión, "Finalizar y resumen" con estadísticas,
-PDF, Excel, jornadas con fotos entre teléfonos (Android ↔ iPhone) y acceso de administrador.
+PDF, Excel, jornadas con fotos entre teléfonos (Android ↔ iPhone).
 Funciona sin señal; los datos y las fotos se guardan dentro del iPhone.
 
 ## Actualizar (si ya la tienes publicada en GitHub Pages)
@@ -24,4 +24,4 @@ Funciona sin señal; los datos y las fotos se guardan dentro del iPhone.
 Abre la dirección en Safari > Compartir > Agregar a inicio. Ábrela siempre desde ese ícono.
 
 ## Primeros pasos
-Menú (⋮) > Configuración (pide usuario y contraseña de administrador) y Catálogo > Escribir catálogo.
+Menú (⋮) > Configuración y Catálogo > Escribir catálogo.
