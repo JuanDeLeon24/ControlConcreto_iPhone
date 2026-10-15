@@ -1,5 +1,5 @@
 /* Guarda la app en el teléfono para que abra y funcione sin señal. Cambia VERSION al publicar cambios. */
-const VERSION = 'concreto-v3';
+const VERSION = 'concreto-v4';
 const ARCHIVOS = ['./', './index.html', './estilos.css', './logica.js', './app.js', './manifest.webmanifest',
   './icono-180.png', './icono-192.png', './icono-512.png'];
 

@@ -74,31 +74,6 @@ async function guardarCfg(c) { E.cfg = c; await DB.put('ajustes', { k: 'config',
 async function guardarCat(c) { E.cat = c; await DB.put('ajustes', { k: 'catalogo', v: c }); }
 const hayCatalogo = () => E.cat.items.length > 0 || E.cat.elementos.length > 0;
 
-/* ================= Acceso de administrador (no guarda sesión ni contraseña) ================= */
-const HUELLA_ADMIN = 'c3779fd0392ef3991a7c97d20ea7c57bb23c627e55097c525a4f3deca6e9ab6b';
-function conAdmin(motivo, fn) {
-  const d = document.createElement('div');
-  d.className = 'modal';
-  d.innerHTML = `<div class="caja" role="dialog" aria-modal="true"><h3>Acceso de administrador</h3>
-    <p style="font-size:.92rem">Se necesita para ${esc(motivo)}.</p>
-    <div class="f"><label for="adU">ID de usuario</label><input id="adU" autocapitalize="none" autocomplete="username" autocorrect="off"></div>
-    <div class="f"><label for="adC">Contraseña</label><input id="adC" type="password" autocomplete="current-password"></div>
-    <label style="display:flex;gap:8px;align-items:center;margin:-4px 0 12px;font-size:.9rem"><input type="checkbox" id="adVer"> Mostrar contraseña</label>
-    <div class="msg" id="adMsg" style="color:var(--peligro);font-size:.88rem;min-height:1.2em;margin-bottom:8px"></div>
-    <div class="fila"><button class="btn sec" data-no>Cancelar</button><button class="btn prim" data-si>Entrar</button></div></div>`;
-  document.body.appendChild(d);
-  const u = d.querySelector('#adU'), c = d.querySelector('#adC');
-  d.querySelector('#adVer').onchange = e => { c.type = e.target.checked ? 'text' : 'password'; };
-  d.querySelector('[data-no]').onclick = () => d.remove();
-  const entrar = () => {
-    if (sha256Hex(u.value.trim().toLowerCase() + '\n' + c.value) === HUELLA_ADMIN) { d.remove(); fn(); }
-    else { c.value = ''; d.querySelector('#adMsg').textContent = 'ID o contraseña incorrectos'; c.focus(); }
-  };
-  d.querySelector('[data-si]').onclick = entrar;
-  c.addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
-  setTimeout(() => u.focus(), 50);
-}
-
 async function borrarFoto(id) {
   await DB.del('fotos', id); await DB.del('minis', id);
   const u = E.minis.get(id); if (u) URL.revokeObjectURL(u); E.minis.delete(id);
@@ -962,9 +937,9 @@ function menu() {
   });
   $('#oLogo').onclick = () => { cerrarSheet(); $('#inLogo').click(); };
   if (E.logo) $('#oQuitar').onclick = async () => { await DB.del('ajustes', 'logo'); ponerLogo(null); cerrarSheet(); render(); toast('Logo quitado'); };
-  $('#oConfig').onclick = () => { cerrarSheet(); conAdmin('cambiar la configuración', pantallaConfig); };
+  $('#oConfig').onclick = () => { cerrarSheet(); pantallaConfig(); };
   $('#oCat').onclick = () => pantallaCatalogo();
-  $('#oImpJ').onclick = () => { cerrarSheet(); conAdmin('importar una jornada', () => { const i = $('#inJornada'); i.value = ''; i.click(); }); };
+  $('#oImpJ').onclick = () => { cerrarSheet(); const i = $('#inJornada'); i.value = ''; i.click(); };
   $('#oHist').onclick = () => {
     if (!E.jornadas.some(j => j.mixers.length)) { cerrarSheet(); toast('Todavía no hay mixers registrados'); return; }
     generar('Excel', async () => { const r = Excel.historial(E.jornadas, E.cfg); return { blob: new Blob(r.partes, { type: MIME_XLSX }), nombre: r.nombre }; });
@@ -973,7 +948,7 @@ function menu() {
     const datos = { app: 'control-concreto', version: 1, jornadas: E.jornadas.map(jornadaAJson) };
     compartirArchivo(new Blob([JSON.stringify(datos, null, 1)], { type: 'application/json' }), `respaldo_concreto_${T.hoy()}.json`);
   };
-  $('#oRest').onclick = () => { cerrarSheet(); conAdmin('restaurar una copia de seguridad', () => { const i = $('#inRespaldo'); i.value = ''; i.click(); }); };
+  $('#oRest').onclick = () => { cerrarSheet(); const i = $('#inRespaldo'); i.value = ''; i.click(); };
 }
 
 /* ================= Catálogo: frentes, tramos y localizaciones ================= */
@@ -1003,11 +978,11 @@ function pantallaCatalogo() {
   $('#cEsc').onclick = () => editorCatalogo();
   $('#cPlX').onclick = () => compartirArchivo(plantillaXlsx(), 'plantilla_frentes_tramos.xlsx');
   $('#cPlC').onclick = () => compartirArchivo(plantillaCsv(), 'plantilla_frentes_tramos.csv');
-  $('#cCargar').onclick = () => conAdmin('cargar el catálogo', () => { const i = $('#inCatalogo'); i.value = ''; i.click(); });
-  if (hayCatalogo()) $('#cBorrar').onclick = () => conAdmin('eliminar el catálogo', () => confirmar('Eliminar catálogo',
+  $('#cCargar').onclick = () => { const i = $('#inCatalogo'); i.value = ''; i.click(); };
+  if (hayCatalogo()) $('#cBorrar').onclick = () => confirmar('Eliminar catálogo',
     'Se borrará el catálogo. Las jornadas ya registradas no se modifican. Después podrás cargar uno nuevo.', 'Eliminar', async () => {
       await guardarCat({ items: [], elementos: [] }); msgCatalogo = 'Catálogo eliminado. Ya puedes cargar uno nuevo.'; pantallaCatalogo();
-    }));
+    });
 }
 function mensajeCat(res, verbo) {
   const nF = new Set(res.items.map(i => i.frente)).size, nT = res.items.filter(i => i.tramo).length, c = E.cfg;
@@ -1031,9 +1006,7 @@ function editorCatalogo() {
   function guardar() {
     let res;
     try { res = Catalogo.desdeTexto($('#ecF').value, $('#ecL').value); } catch (e) { $('#ecMsg').textContent = e.message; return; }
-    conAdmin('guardar el catálogo', async () => {
-      await guardarCat({ items: res.items, elementos: res.elementos }); msgCatalogo = mensajeCat(res, 'guardado'); pantallaCatalogo();
-    });
+    guardarCat({ items: res.items, elementos: res.elementos }).then(() => { msgCatalogo = mensajeCat(res, 'guardado'); pantallaCatalogo(); });
   }
 }
 $('#inCatalogo').onchange = async e => {
